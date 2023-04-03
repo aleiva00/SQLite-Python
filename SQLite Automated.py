@@ -8,8 +8,9 @@ import pandas as pd
 import yfinance as yf
 import sqlite3
 
+from datetime import date
 
-
+today=date.today()
 
 ##########################################################################
 #      LECTURA DE DATOS
@@ -17,7 +18,6 @@ import sqlite3
 
 
 # Function that downloads data from YF
-
 def get_stock_data(symbol, start, end):
     data = yf.download(symbol, start=start, end=end)
     data.reset_index(inplace=True)
@@ -33,8 +33,6 @@ def get_stock_data(symbol, start, end):
     return data
 
 # Function that save the data in the DataFrame into the database
-
-
 def save_data_range(symbol, start, end, con):
     data = get_stock_data(symbol, start, end)
     data.to_sql(
@@ -46,8 +44,6 @@ def save_data_range(symbol, start, end, con):
     
 
 # Function that grabs data from today and inserts it into the database
-
-
 def save_last_trading_session(symbol, con):
     today = pd.Timestamp.today()
     data = get_stock_data(symbol, today, today)
@@ -60,32 +56,36 @@ def save_last_trading_session(symbol, con):
     
 
 
-df=get_stock_data("AAPL", start="2023-01-01", end="2023-04-02")
+# Choose stocks to follow
+stocks=["AAPL", "META", "XOM", "QQQ", "SQQQ"]
 
 
 
-if __name__ == "__main__":
-    # usage example for bulk insert
-    #     python market_data.py bulk SPY 2022-01-01 2022-10-20
-    # usage example for last session
-    #     python market_aata.py last SPY
+#Get historical data from those stocks
 
-    con = sqlite3.connect("market_data.sqlite")
-
-    if argv[1] == "bulk":
-        symbol = argv[2]
-        start = argv[3]
-        end = argv[4]
-        save_data_range(symbol, start, end, con)
-        print(f"{symbol} saved between {start} and {end}")
-    elif argv[1] == "last":
-        symbol = argv[2]
-        save_last_trading_session(symbol, con)
-        print(f"{symbol} saved")
-    else:
-        print("Enter bulk or last")
+# create an empty dictionary to store the dataframes
+dfs = {}
 
 
+# Read all tickers we want:
+for stock in stocks:
+    df=get_stock_data(stock, start="1990-01-01", end=str(today))
+    dfs[stock]=df
+
+#Save it to the SQL database
+
+# Create the conection to SQL
+
+con = sqlite3.connect("market_data.sqlite")
+
+for stock in stocks:
+    df=save_data_range(stock, start="1990-01-01", end=str(today), con=con)
+    dfs[stock]=df
+
+# In case I would like to update and add data from today
+for stock in stocks:
+    df=save_last_trading_session(stock, con=con)
+    dfs[stock]=df
 
 
 
